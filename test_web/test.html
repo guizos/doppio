@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prototipo Doppio</title>
+
+    <!-- Bootstrap -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="js/bootstrap.min.js"></script>
+	<script src="js/test_doppio.js"></script>
+	
+	<div class="container">
+		<div class="lead">
+			Esto es un texto de prueba previo.
+		</div>
+		
+		<div class="content">
+		
+			<p class="lead">
+				<form id="code_area">
+				
+					<textarea id="text_code" rows="10" cols="30">Type your code here</textarea>
+				</form>
+				<a class="btn btn-lg btn-success" onclick="execute();" role="button">Compilar y ejecutar</a>
+			</p>
+			<p class="lead" id="result">
+				El resultado iría aquí.
+			
+			</p>
+		</div>
+		
+		
+	</div>
+  </body>
+</html>
