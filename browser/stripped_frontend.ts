@@ -447,23 +447,6 @@ var commands = {
     });
     return null;
   },
-  ecj: function(args: string[]): string {
-    args.unshift('org/eclipse/jdt/internal/compiler/batch/Main');
-    args.unshift('-Djdt.compiler.useSingleThread=true');
-    java_cli.java(args, {
-      jvm_state: jvm_state
-    }, function(status: boolean): void {
-      // XXX: remove any classes that just got compiled from the class cache
-      for (var i = 0; i < args.length; i++) {
-        var c = args[i];
-        if (c.match(/\.java$/)) {
-          jvm_state.bs_cl.remove_class(util.int_classname(c.slice(0, -5)));
-        }
-      }
-      controller.reprompt();
-    });
-    return null;
-  },
   javac: function(args: string[]): string {
     args.unshift('classes/util/Javac');
     java_cli.java(args, {
@@ -518,100 +501,11 @@ var commands = {
     }
     return null;
   },
-  disassemble: function(args: string[]): string {
-    disassembler.javap(args, function(status: boolean): void {
-      controller.reprompt();
-    });
-    return null;
-  },
   rhino: function(args: string[]): string {
     args.unshift('com/sun/tools/script/shell/Main');
     java_cli.java(args, {
       jvm_state: jvm_state
     }, function(result: boolean): void {
-      controller.reprompt();
-    });
-    return null;
-  },
-  // Disabled for now.
-  /*list_cache: function(): string {
-    var cached_classes = jvm_state.bs_cl.get_loaded_class_list(true);
-    return '  ' + cached_classes.sort().join('\n  ');
-  },
-  clear_cache: function(): string {
-    jvm_state.reset_classloader_cache();
-    return 'Class cache cleared';
-  },*/
-  ls: function(args: string[]): string {
-    if (args.length === 0) {
-      read_dir('.', true, true, (listing) => controller.message(listing, 'success'));
-    } else if (args.length === 1) {
-      read_dir(args[0], true, true, (listing) => controller.message(listing, 'success'));
-    } else {
-      util.async_foreach(args,
-        function(dir: string, next_item: ()=>void) {
-          read_dir(dir, true, true, function(listing: string){
-            controller.message(dir + ':\n' + listing + '\n\n', 'success', true);
-            next_item();
-          });
-        }, controller.reprompt);
-    }
-    return null;
-  },
-  edit: function(args: string[]) {
-    function start_editor(data: string): void {
-      $('#console').fadeOut('fast', function(): void {
-        $('#filename').val(args[0]);
-        $('#ide').fadeIn('fast');
-        // Initialize the editor. Technically we only need to do this once,
-        // but more is fine too.
-        editor = ace.edit('source');
-        editor.setTheme('ace/theme/twilight');
-        if (args[0] == null || args[0].split('.')[1] === 'java') {
-          var JavaMode = ace.require("ace/mode/java").Mode;
-          editor.getSession().setMode(new JavaMode);
-        } else {
-          var TextMode = ace.require("ace/mode/text").Mode;
-          editor.getSession().setMode(new TextMode);
-        }
-        editor.getSession().setValue(data);
-      });
-    }
-    if (args[0] == null) {
-      start_editor(defaultFile('Test.java'));
-      return true;
-    }
-    fs.readFile(args[0], 'utf8', function(err: Error, data: string): void {
-      if (err) {
-        start_editor(defaultFile(args[0]));
-      } else {
-        start_editor(data);
-      }
-      controller.reprompt();
-    });
-  },
-  cat: function(args: string[]): string {
-    var fname = args[0];
-    if (fname == null) {
-      return "Usage: cat <file>";
-    }
-    fs.readFile(fname, 'utf8', function(err: Error, data: string): void {
-      if (err) {
-        controller.message("Could not open file '" + fname + "': " + err, 'error');
-      } else {
-        controller.message(data, 'success');
-      }
-    });
-    return null;
-  },
-  mv: function(args: string[]): string {
-    if (args.length < 2) {
-      return "Usage: mv <from-file> <to-file>";
-    }
-    fs.rename(args[0], args[1], function(err?: Error) {
-      if (err) {
-        controller.message("Could not rename "+args[0]+" to "+args[1]+": "+err, 'error', true);
-      }
       controller.reprompt();
     });
     return null;
@@ -651,162 +545,9 @@ var commands = {
       controller.reprompt();
     })
     return null;
-  },
-  rm: function(args: string[]): string {
-    if (args[0] == null) {
-      return "Usage: rm <file>";
-    }
-    var completed = 0;
-    function remove_file(file: string, total: number): void {
-      fs.unlink(file, function(err?: Error){
-        if (err) {
-          controller.message("Could not remove file: " + file + "\n", 'error', true);
-        }
-        if (++completed == total) {
-          controller.reprompt();
-        }
-      });
-    }
-    if (args[0] === '*') {
-      fs.readdir('.', function(err: Error, fnames: string[]){
-        if (err) {
-          controller.message("Could not read '.': " + err, 'error');
-          return;
-        }
-        for (var i = 0; i < fnames.length; i++) {
-          remove_file(fnames[i], fnames.length);
-        }
-      });
-    } else {
-      remove_file(args[0], 1);
-    }
-    return null;
-  },
-  mount_dropbox: function(args: string[]): string {
-    var api_key: string = "j07r6fxu4dyd08r";
-    if (args.length < 1 || args[0] !== 'Y') {
-      return "This command may redirect you to Dropbox's site for authentication.\n" +
-        "If you would like to proceed with mounting Dropbox into the in-browser " +
-        "filesystem, please type \"mount_dropbox Y\".\n" +
-        "Once you have successfully authenticated with Dropbox and the page reloads,\n" +
-        "you will need to type \"mount_dropbox Y\" again to finish mounting.\n" +
-        "If you would like to use your own API key, please type \"mount_dropbox Y your_api_key_here\".";
-    }
-    if (args.length == 2 && args[1].length === 15) {
-      api_key = args[1];
-    }
-    var client = new Dropbox.Client({ key: api_key });
-    client.authenticate(function(error: any, data?: any): void {
-      var mfs;
-      if (error == null) {
-        mfs = (<any>fs).getRootFS();
-        mfs.mount('/mnt/dropbox', new (<any>BrowserFS).FileSystem.Dropbox(client));
-        controller.message("Successfully connected to your Dropbox account. You can now access files in the /Apps/DoppioJVM folder of your Dropbox account at /mnt/dropbox.", 'success');
-        return;
-      } else {
-        controller.message("Unable to connect to Dropbox: " + error, 'error');
-        return;
-      }
-    });
-    return null;
-  },
-  emacs: function(): string {
-    return "Try 'vim'.";
-  },
-  vim: function(): string {
-    return "Try 'emacs'.";
-  },
-  time: function(args: string[]) {
-    var start = (new Date).getTime();
-    console.profile(args[0]);
-    controller.onreprompt = function() {
-      controller.onreprompt = null;
-      console.profileEnd();
-      var end = (new Date).getTime();
-      controller.message("\nCommand took a total of " + (end - start) + "ms to run.\n", '', true);
-    };
-    return commands[args.shift()](args);
-  },
-  profile: function(args: string[]) {
-    var count = 0;
-    var runs = 5;
-    var duration = 0;
-    function time_once(): void {
-      var start = (new Date).getTime();
-      controller.onreprompt = function() {
-        if (!(count < runs)) {
-          controller.onreprompt = null;
-          controller.message("\n" + args[0] + " took an average of " + (duration / runs) + "ms.\n", '', true);
-          return;
-        }
-        var end = (new Date).getTime();
-        if (count++ === 0) { // first one to warm the cache
-          return time_once();
-        }
-        duration += end - start;
-        return time_once();
-      };
-      return commands[args.shift()](args);
-    }
-    return time_once();
-  },
-  help: function(args: string[]): string {
-    return "Ctrl-D is EOF.\n\n" +
-      "Java-related commands:\n" +
-      "  javac <source file>     -- Invoke the Java 6 compiler.\n" +
-      "  java <class> [args...]  -- Run with command-line arguments.\n" +
-      "  javap [args...] <class> -- Run the Java 6 disassembler.\n" +
-      "  disassemble <class>     -- Run our own custom Java disassembler.\n" +
-      "  time                    -- Measure how long it takes to run a command.\n" +
-      "  rhino                   -- Run Rhino, the Java-based JavaScript engine.\n\n" +
-      "File management:\n" +
-      "  cat <file>              -- Display a file in the console.\n" +
-      "  edit <file>             -- Edit a file.\n" +
-      "  ls <dir>                -- List files.\n" +
-      "  mv <src> <dst>          -- Move / rename a file.\n" +
-      "  rm <file>               -- Delete a file.\n" +
-      "  mkdir <dir>             -- Create a directory.\n" +
-      "  cd <dir>                -- Change current directory.\n" +
-      "  mount_dropbox           -- Mount a Dropbox folder into the file system.\n\n";
-      /*"Cache management:\n" +
-      "  list_cache              -- List the cached class files.\n" +
-      "  clear_cache             -- Clear the cached class files.";*/
   }
 };
 
-function tabComplete(): void {
-  var promptText = controller.promptText();
-  var args = promptText.split(/\s+/);
-  var last_arg = util.last(args);
-  getCompletions(args, function(completions: string[]) {
-    var prefix = longestCommmonPrefix(completions);
-    if (prefix == '' || prefix == last_arg) {
-      // Weve no more sure completions to give, so show all options.
-      var common_len = last_arg.lastIndexOf('/') + 1;
-      var options = columnize(completions.map((c) => c.slice(common_len)));
-      controller.message(options, 'success');
-      controller.promptText(promptText);
-      return;
-    }
-    // Delete existing text so we can do case correction.
-    promptText = promptText.substr(0, promptText.length -  last_arg.length);
-    controller.promptText(promptText + prefix);
-  });
-}
-
-function getCompletions(args: string[], cb: (c: string[])=>void): void {
-  if (args.length == 1) {
-    cb(filterSubstring(args[0], Object.keys(commands)));
-  } else if (args[0] === 'time') {
-    getCompletions(args.slice(1), cb);
-  } else {
-    fileNameCompletions(args[0], args, cb);
-  }
-}
-
-function filterSubstring(prefix: string, lst: string[]): string[] {
-  return lst.filter((x) => x.substr(0, prefix.length) == prefix);
-}
 
 function validExtension(cmd: string, fname: string): boolean {
   var dot = fname.lastIndexOf('.');
@@ -822,47 +563,6 @@ function validExtension(cmd: string, fname: string): boolean {
   }
 }
 
-function fileNameCompletions(cmd: string, args: string[], cb: (c: string[])=>void): void {
-  var chopExt = args.length === 2 && (cmd === 'javap' || cmd === 'java');
-  var toComplete = util.last(args);
-  var lastSlash = toComplete.lastIndexOf('/');
-  var dirPfx: string, searchPfx: string;
-  if (lastSlash >= 0) {
-    dirPfx = toComplete.slice(0, lastSlash + 1);
-    searchPfx = toComplete.slice(lastSlash + 1);
-  } else {
-    dirPfx = '';
-    searchPfx = toComplete;
-  }
-  var dirPath = (dirPfx == '') ? '.' : path.resolve(dirPfx);
-  fs.readdir(dirPath, function(err: Error, dirList: string[]){
-    var completions: string[] = [];
-    if (err != null) {
-      return cb(completions)
-    }
-    dirList = filterSubstring(searchPfx, dirList);
-    util.async_foreach(dirList,
-      // runs on each element
-      function(item: string, next_item: ()=>void) {
-        fs.stat(path.resolve(dirPfx + item), function(err: Error, stats) {
-          if (err != null) {
-            // Do nothing.
-          } else if (stats.isDirectory()) {
-            completions.push(dirPfx + item + '/');
-          } else if (validExtension(cmd, item)) {
-            if (chopExt) {
-              completions.push(dirPfx + item.split('.', 1)[0]);
-            } else {
-              completions.push(dirPfx + item);
-            }
-          }
-          next_item();
-        });
-      },
-      // runs at the end of processing
-      () => cb(completions));
-  });
-}
 
 function defaultFile(filename: string): string {
   if (filename.indexOf('.java', filename.length - 5) != -1) {

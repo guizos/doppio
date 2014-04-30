@@ -158,7 +158,7 @@ export function java(args: string[], opts: JavaOptions,
           }
         };
         return function(result: boolean): void {
-          // Ensure we replace log, even if count didn't decrement to 0.
+          // Ensure we replace log, even if count didnt decrement to 0.
           console.log = old_log;
           old_done_cb(result);
         };
@@ -229,7 +229,7 @@ function launch_jvm(argv: any, opts: JavaOptions, jvm_state: JVM, done_cb: (resu
       cname = argv.className,
       jar_file = argv.standard.jar;
 
-  // Wrap done_cb in a function that resets the JVM's state when finished.
+  // Wrap done_cb in a function that resets the JVMs state when finished.
   done_cb = (function(old_done_cb: (result: boolean) => void): (result: boolean) => void {
     return function(result: boolean): void {
       jvm_state.reset_system_properties();
